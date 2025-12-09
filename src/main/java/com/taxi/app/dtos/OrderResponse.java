@@ -17,6 +17,12 @@ public class OrderResponse {
     private String originAddress;
     private String destinationAddress;
 
+    private Double originLat;
+    private Double originLon;
+
+    private Double destinationLat;
+    private Double destinationLon;
+
     private LocalDateTime createdAt;
     private LocalDateTime acceptedAt;
     private LocalDateTime startedAt;

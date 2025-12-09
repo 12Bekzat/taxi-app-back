@@ -1,9 +1,11 @@
 package com.taxi.app.services;
 
+import com.taxi.app.dtos.Address;
 import com.taxi.app.dtos.CreateOrderRequest;
 import com.taxi.app.dtos.DriverEarningsSummary;
 import com.taxi.app.dtos.OrderResponse;
 import com.taxi.app.models.*;
+import com.taxi.app.repos.DriverRatingRepository;
 import com.taxi.app.repos.OrderRepository;
 import com.taxi.app.repos.SpecialEquipmentTypeRepository;
 import org.springframework.stereotype.Service;
@@ -11,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.Comparator;
 import java.util.List;
 
 import static java.util.stream.Collectors.toList;
@@ -22,13 +25,15 @@ public class OrderService {
     private final OrderRepository orderRepository;
     private final SpecialEquipmentTypeRepository equipmentRepository;
     private final DynamicPricingService pricingService;
+    private final DriverRatingService driverRatingService;
 
     public OrderService(OrderRepository orderRepository,
                         SpecialEquipmentTypeRepository equipmentRepository,
-                        DynamicPricingService pricingService) {
+                        DynamicPricingService pricingService, DriverRatingService driverRatingService) {
         this.orderRepository = orderRepository;
         this.equipmentRepository = equipmentRepository;
         this.pricingService = pricingService;
+        this.driverRatingService = driverRatingService;
     }
 
     public OrderResponse createOrder(CreateOrderRequest req, User customer) {
@@ -66,6 +71,18 @@ public class OrderService {
         return orders.stream().map(this::toResponse).collect(toList());
     }
 
+    public OrderResponse getCustomerLastOrder(User customer) {
+        List<Order> orders = orderRepository.findByCustomerAndStatusIn(
+                customer,
+                List.of(OrderStatus.COMPLETED)
+        );
+        orders.sort(Comparator.comparing(Order::getCreatedAt).reversed());
+
+        if(driverRatingService.isExistingDriverRating(orders.get(0))) return null;
+
+        return toResponse(orders.get(0));
+    }
+
     public List<OrderResponse> getDriverActiveOrders(User driver) {
         List<Order> orders = orderRepository.findByDriverAndStatusIn(
                 driver,
@@ -79,7 +96,7 @@ public class OrderService {
         return orders.stream().map(this::toResponse).collect(toList());
     }
 
-    public OrderResponse acceptOrder(Long orderId, User driver) {
+    public OrderResponse acceptOrder(Long orderId, User driver, Address destination) {
         if (driver.getRole() != Role.DRIVER) {
             throw new RuntimeException("Only driver can accept orders");
         }
@@ -94,6 +111,8 @@ public class OrderService {
         order.setDriver(driver);
         order.setStatus(OrderStatus.ACCEPTED);
         order.setAcceptedAt(LocalDateTime.now());
+        order.setDestinationLat(destination.getLatitude());
+        order.setDestinationLon(destination.getLongitude());
         return toResponse(order);
     }
 
@@ -174,6 +193,10 @@ public class OrderService {
                 .destinationAddress(o.getDestinationAddress())
                 .createdAt(o.getCreatedAt())
                 .acceptedAt(o.getAcceptedAt())
+                .originLat(o.getOriginLat())
+                .originLon(o.getOriginLon())
+                .destinationLat(o.getDestinationLat())
+                .destinationLon(o.getDestinationLon())
                 .startedAt(o.getStartedAt())
                 .finishedAt(o.getFinishedAt())
                 .pricePerMinute(o.getPricePerMinute())

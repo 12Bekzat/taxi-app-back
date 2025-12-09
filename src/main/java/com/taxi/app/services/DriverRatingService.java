@@ -10,6 +10,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 import static java.util.stream.Collectors.toList;
 
@@ -87,6 +88,12 @@ public class DriverRatingService {
                 .ratingsCount(count)
                 .ratings(ratingDtos)
                 .build();
+    }
+
+    public boolean isExistingDriverRating(Order order) {
+        if (order == null) { return false; }
+        Optional<DriverRating> byOrder = ratingRepository.findByOrder(order);
+        return byOrder.isPresent();
     }
 
     private DriverRatingDto toDto(DriverRating r) {

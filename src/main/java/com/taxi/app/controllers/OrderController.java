@@ -1,5 +1,6 @@
 package com.taxi.app.controllers;
 
+import com.taxi.app.dtos.Address;
 import com.taxi.app.dtos.CreateOrderRequest;
 import com.taxi.app.dtos.DriverEarningsSummary;
 import com.taxi.app.dtos.OrderResponse;
@@ -57,9 +58,10 @@ public class OrderController {
     @PostMapping("/driver/{id}/accept")
     public ResponseEntity<OrderResponse> accept(
             @PathVariable Long id,
+            @RequestBody Address destination,
             @AuthenticationPrincipal User user
     ) {
-        return ResponseEntity.ok(orderService.acceptOrder(id, user));
+        return ResponseEntity.ok(orderService.acceptOrder(id, user, destination));
     }
 
     @PostMapping("/driver/{id}/start")
@@ -86,5 +88,12 @@ public class OrderController {
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime to
     ) {
         return ResponseEntity.ok(orderService.getDriverEarnings(user, from, to));
+    }
+
+    @GetMapping("/customer/last-completed-unrated")
+    public ResponseEntity<OrderResponse> customerLastCompletedUnrated(
+            @AuthenticationPrincipal User user
+    ) {
+        return ResponseEntity.ok(orderService.getCustomerLastOrder(user));
     }
 }
